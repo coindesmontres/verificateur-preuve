@@ -137,7 +137,7 @@
     <span class="tuile" id="logo" aria-hidden="true"></span>
     <div>
       <div class="marque">coindesmontres.fr</div>
-      <div class="sous">Vérificateur de preuve, indépendant du site</div>
+      <div class="sous">Vérificateur de preuve</div>
     </div>
   </header>
 
@@ -148,7 +148,7 @@
       <span class="tuile" id="verdict-icone" aria-hidden="true"></span>
       <div class="corps">
         <h1 id="verdict-titre">Dépose ton dossier de preuve</h1>
-        <p class="gris" id="verdict-texte">Vérifie, sans le site, que chaque ligne de l’histoire d’une montre existait telle quelle à la date inscrite dans Bitcoin.</p>
+        <p class="gris" id="verdict-texte">Vérifie qu’aucune ligne de l’histoire d’une montre n’a été modifiée depuis son scellement dans Bitcoin.</p>
       </div>
     </div>
   </section>
@@ -1453,7 +1453,7 @@ var ADRESSE_CODE_PUBLIC = "https://github.com/coindesmontres/verificateur-preuve
     if (typeof m.reference === "string" && m.reference) corps.appendChild(el("div", "meta", "Référence " + m.reference));
     var mentions = el("div"); mentions.id = "embarque-mentions"; mentions.style.marginTop = "8px";
     corps.appendChild(mentions);
-    corps.appendChild(el("p", "gris petit", "Ce fichier contient la preuve de cette montre et la vérifie lui-même, sans le site."));
+    corps.appendChild(el("p", "gris petit", "Ce fichier contient la preuve de cette montre et la vérifie lui-même."));
     if (typeof ADRESSE_CODE_PUBLIC === "string" && /^https:\/\/[^\s"<>]+$/.test(ADRESSE_CODE_PUBLIC)) {
       var a = el("a", null, "Le code public du vérificateur");
       a.href = ADRESSE_CODE_PUBLIC; a.rel = "noopener noreferrer"; a.target = "_blank";

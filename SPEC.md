@@ -1,6 +1,6 @@
 # Dossier de preuve coindesmontres.fr — spécification (v1)
 
-But : n'importe qui, avec le dossier de preuve d'un passeport, peut vérifier **sans le site** que chaque ligne de l'histoire qu'il lit existait telle quelle à la date inscrite dans Bitcoin. Le site peut avoir disparu.
+But : avec le dossier de preuve d'un passeport, chacun peut vérifier lui-même que chaque ligne de l'histoire qu'il lit existait telle quelle à la date inscrite dans Bitcoin.
 
 Toutes les empreintes sont `sha256` en hexadécimal minuscule, calculées sur le texte UTF-8.
 
