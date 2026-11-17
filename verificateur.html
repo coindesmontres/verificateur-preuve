@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://blockstream.info https://mempool.space; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Vérificateur de preuve · coindesmontres.fr</title>
@@ -169,7 +170,7 @@
     <div class="rangee">
       <span class="tuile" id="papiers-icone" aria-hidden="true"></span>
       <div class="corps">
-        <h2>Un papier à vérifier&#8239;?</h2>
+        <h2>Un papier à vérifier&nbsp;?</h2>
         <p class="gris petit">Dépose la facture, le certificat ou la photo que tu as en main. Son empreinte est calculée ici, sur ton appareil, puis comparée aux lignes du dossier.</p>
       </div>
     </div>
@@ -1022,7 +1023,8 @@ var ADRESSE_CODE_PUBLIC = "https://github.com/coindesmontres/verificateur-preuve
       } catch (e) { /* sans fuseaux : UTC */ }
     }
     var t = (p.day === 1 ? "1er" : String(p.day)) + " " + MOIS[p.month - 1] + " " + p.year;
-    return avecHeure ? t + " à " + p.hour + " h " + (p.minute < 10 ? "0" : "") + p.minute : t;
+    // Espaces insécables : « 17 h 45 » ne se coupe jamais en deux lignes.
+    return avecHeure ? t + " à " + p.hour + " h " + (p.minute < 10 ? "0" : "") + p.minute : t;
   }
 
   function enTexte(v, profondeur) {
