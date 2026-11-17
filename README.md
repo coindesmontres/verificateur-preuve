@@ -64,3 +64,7 @@ HORS_LIGNE=1 node tests/verifier.mjs # sans réseau
 Le script charge la logique directement depuis `verificateur.html` (bloc `<script id="logique-verification">`) : il n’existe qu’un seul code de vérification. Il contrôle les fonctions de hachage, un vrai scellement ancré dans Bitcoin, un dossier synthétique en formules par champs (verdict « en attente »), et une série de falsifications qui doivent échouer à la bonne étape. Il écrit `tests/dossier-synthetique.json`, et les pages autonomes `tests/dossier-reel.html` et `tests/dossier-synthetique.html`, à ouvrir dans le navigateur.
 
 Le vrai scellement (`tests/scellement-bitcoin.json`, bloc 970397) ne contient que des empreintes, des chemins et le fichier `.ots` : aucun contenu.
+
+## Licence
+
+Tous droits réservés : voir [LICENSE](LICENSE). Tu peux lire ce code, l’exécuter et t’en servir pour vérifier un dossier de preuve ; toute autre utilisation demande l’accord de coindesmontres.fr.
