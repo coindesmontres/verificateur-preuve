@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://blockstream.info https://mempool.space; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Vérificateur de preuve · coindesmontres.fr</title>
+<style>
+  :root {
+    --fond: #F4F4F7;
+    --carte: #FFFFFF;
+    --texte: #1E2A4A;
+    --gris: #5B6478;
+    --filet: #E6E7EE;
+    --violet: #6A3BD1;
+    --lilas: #EFE9FD;
+    --vert: #2E7D4F;
+    --vert-fond: #E8F5EE;
+    --rouge: #B3261E;
+    --rouge-fond: #FCEDEC;
+    --attente: #6A3BD1;
+    --attente-fond: #EFE9FD;
+    --code-fond: #F4F4F7;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #121420;
+      --carte: #1C1F2E;
+      --texte: #E9EBF3;
+      --gris: #A4ABBE;
+      --filet: #2C3042;
+      --violet: #A98BF2;
+      --lilas: #2B2545;
+      --vert: #7DCB9C;
+      --vert-fond: #173024;
+      --rouge: #EE9A93;
+      --rouge-fond: #3A1F1E;
+      --attente: #C6B2F7;
+      --attente-fond: #2B2545;
+      --code-fond: #151826;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--fond); color: var(--texte);
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    font-size: 16px; line-height: 1.5;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 16px 14px 48px; }
+  header.tete { display: flex; align-items: center; gap: 12px; padding: 8px 2px 18px; }
+  .marque { font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+  .sous { color: var(--gris); font-size: 14px; }
+  h1 { font-size: 22px; line-height: 1.25; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 16px; margin: 0; }
+  p { margin: 0 0 10px; }
+  .carte { background: var(--carte); border-radius: 20px; padding: 18px 16px; margin: 0 0 14px; }
+  .tuile {
+    flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--lilas); color: var(--violet);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tuile svg { width: 22px; height: 22px; }
+  .rangee { display: flex; gap: 12px; align-items: flex-start; }
+  .rangee > .corps { min-width: 0; flex: 1; }
+  @media (max-width: 479px) {
+    .rangee { flex-direction: column; gap: 10px; }
+    .rangee > .corps { width: 100%; }
+  }
+  .gris { color: var(--gris); }
+  .petit { font-size: 14px; }
+  .verdict.ok { background: var(--vert-fond); }
+  .verdict.ok .tuile { background: var(--carte); color: var(--vert); }
+  .verdict.echec { background: var(--rouge-fond); }
+  .verdict.echec .tuile { background: var(--carte); color: var(--rouge); }
+  .verdict.ok h1 { color: var(--vert); }
+  .verdict.echec h1 { color: var(--rouge); }
+  .pastille {
+    display: inline-block; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+  }
+  .pastille.ok { color: var(--vert); background: var(--vert-fond); }
+  .pastille.echec { color: var(--rouge); background: var(--rouge-fond); }
+  .pastille.attente { color: var(--attente); background: var(--attente-fond); }
+  .pastille.neutre { color: var(--gris); background: var(--fond); }
+  .depot {
+    border: 1.5px dashed var(--filet); border-radius: 16px; padding: 18px 14px; text-align: center; margin-top: 10px;
+  }
+  .depot.survol { border-color: var(--violet); background: var(--lilas); }
+  .bouton {
+    display: inline-block; appearance: none; border: 0; border-radius: 999px; background: var(--violet); color: #FFFFFF;
+    font: inherit; font-weight: 600; font-size: 15px; padding: 10px 18px; cursor: pointer; margin-top: 8px;
+  }
+  @media (prefers-color-scheme: dark) { .bouton { color: #121420; } }
+  .bouton:active { transform: scale(.98); }
+  .bouton:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .ligne-tete { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+  .titre-ligne { font-weight: 650; overflow-wrap: anywhere; }
+  .texte-ligne { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; }
+  .meta { color: var(--gris); font-size: 14px; }
+  dl.details { margin: 10px 0 0; display: grid; grid-template-columns: 1fr; gap: 2px 12px; font-size: 15px; }
+  dl.details dt { color: var(--gris); font-size: 13px; margin-top: 6px; }
+  dl.details dd { margin: 0; overflow-wrap: anywhere; }
+  @media (min-width: 560px) {
+    dl.details { grid-template-columns: max-content 1fr; }
+    dl.details dt { margin-top: 0; font-size: 14px; }
+  }
+  details.technique { margin-top: 12px; font-size: 14px; color: var(--gris); }
+  details.technique summary { cursor: pointer; color: var(--violet); font-weight: 600; }
+  .mono {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere;
+    background: var(--code-fond); border-radius: 10px; padding: 8px 10px; margin: 6px 0; color: var(--texte);
+  }
+  ul.etapes { list-style: none; padding: 0; margin: 10px 0 0; }
+  ul.etapes li { display: flex; gap: 8px; align-items: baseline; font-size: 14px; padding: 2px 0; }
+  ul.etapes .marqueur { flex: none; width: 1.2em; font-weight: 700; }
+  .marqueur.ok { color: var(--vert); }
+  .marqueur.echec { color: var(--rouge); }
+  .marqueur.attente { color: var(--attente); }
+  .liste-sobre { margin: 6px 0 0; padding-left: 20px; }
+  .cache { display: none; }
+  .note-heritee { font-size: 13px; color: var(--violet); font-weight: 600; }
+  footer.pied { color: var(--gris); font-size: 13px; text-align: center; padding-top: 6px; }
+  @media (min-width: 900px) {
+    .page { padding-top: 32px; }
+    h1 { font-size: 26px; }
+    .carte { padding: 22px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="tete">
+    <span class="tuile" id="logo" aria-hidden="true"></span>
+    <div>
+      <div class="marque">coindesmontres.fr</div>
+      <div class="sous">Vérificateur de preuve, indépendant du site</div>
+    </div>
+  </header>
+
+  <section class="carte cache" id="embarque"></section>
+
+  <section class="carte verdict" id="verdict" aria-live="polite">
+    <div class="rangee">
+      <span class="tuile" id="verdict-icone" aria-hidden="true"></span>
+      <div class="corps">
+        <h1 id="verdict-titre">Dépose ton dossier de preuve</h1>
+        <p class="gris" id="verdict-texte">Vérifie, sans le site, que chaque ligne de l’histoire d’une montre existait telle quelle à la date inscrite dans Bitcoin.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="carte" id="chargement">
+    <h2 id="chargement-titre">Ouvrir un dossier</h2>
+    <p class="gris petit">Un fichier <span class="mono" style="padding:1px 5px">.json</span> ou une page <span class="mono" style="padding:1px 5px">.html</span> de dossier. Rien ne quitte ton appareil.</p>
+    <div class="depot" id="depot-dossier">
+      <div class="gris petit">Glisse le fichier ici, ou</div>
+      <label class="bouton" for="choix-dossier">Choisir un fichier</label>
+      <input type="file" id="choix-dossier" accept=".json,.html,.htm,application/json,text/html">
+    </div>
+  </section>
+
+  <section class="carte cache" id="montre"></section>
+  <section class="carte cache" id="sceaux"></section>
+
+  <section class="carte cache" id="papiers">
+    <div class="rangee">
+      <span class="tuile" id="papiers-icone" aria-hidden="true"></span>
+      <div class="corps">
+        <h2>Un papier à vérifier&#8239;?</h2>
+        <p class="gris petit">Dépose la facture, le certificat ou la photo que tu as en main. Son empreinte est calculée ici, sur ton appareil, puis comparée aux lignes du dossier.</p>
+      </div>
+    </div>
+    <div class="depot" id="depot-papier">
+      <div class="gris petit">Glisse le fichier ici, ou</div>
+      <label class="bouton" for="choix-papier">Choisir un fichier</label>
+      <input type="file" id="choix-papier">
+    </div>
+    <div id="papier-resultat" aria-live="polite"></div>
+  </section>
+
+  <section id="lignes"></section>
+
+  <footer class="pied">Seuls blockstream.info et mempool.space sont consultés, pour lire Bitcoin.</footer>
+</div>
+
+<script type="application/json" id="dossier-preuve"></script>
+
+<script id="logique-verification">
+/*
+ * Logique de vérification d'un dossier de preuve coindesmontres.fr (SPEC.md, v1).
+ * Aucune dépendance, aucun accès au DOM : ce bloc est aussi chargé tel quel par tests/verifier.mjs.
+ * Le dossier est une donnée non fiable : tout est validé, borné, et rien n'est interprété comme du code.
+ */
+var VerifPreuve = (function () {
+  "use strict";
+
+  var LIMITES = {
+    messageMax: 4096,        // taille maximale d'un message OpenTimestamps (octets)
+    argumentMax: 4096,       // argument d'une opération append / prepend
+    attestationMax: 8192,    // charge utile d'une attestation
+    uriMax: 1000,            // adresse d'un calendrier
+    profondeurMax: 256,      // profondeur de l'arbre OpenTimestamps
+    operationsMax: 20000,    // nombre total d'opérations dans un fichier
+    otsMax: 1048576,         // taille d'un fichier .ots (octets)
+    cheminMax: 256,          // étapes d'un chemin de Merkle
+    lignesMax: 20000,
+    reponseMax: 200000       // taille d'une réponse d'explorateur (caractères)
+  };
+
+  var SOURCES = [
+    { nom: "blockstream.info", base: "https://blockstream.info/api" },
+    { nom: "mempool.space", base: "https://mempool.space/api" }
+  ];
+
+  var HEX64 = /^[0-9a-f]{64}$/;
+
+  /* ---------- Octets ---------- */
+
+  var encodeur = new TextEncoder();
+  function utf8(s) { return encodeur.encode(s); }
+
+  function hex(o) {
+    var s = "";
+    for (var i = 0; i < o.length; i++) s += (o[i] < 16 ? "0" : "") + o[i].toString(16);
+    return s;
+  }
+
+  function depuisBase64(s) {
+    if (typeof s !== "string") throw new Error("le fichier OpenTimestamps n’est pas du texte base64");
+    var propre = s.replace(/\s+/g, "");
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(propre)) throw new Error("le fichier OpenTimestamps n’est pas du base64 valide");
+    var bin = atob(propre);
+    var o = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) o[i] = bin.charCodeAt(i);
+    return o;
+  }
+
+  function concat(a, b) {
+    var o = new Uint8Array(a.length + b.length);
+    o.set(a, 0); o.set(b, a.length);
+    return o;
+  }
+
+  function aOctets(x) { return typeof x === "string" ? utf8(x) : x; }
+
+  /* ---------- Fonctions de hachage, en JavaScript pur ---------- */
+
+  function remplir(m, grosBout) {
+    var l = m.length;
+    var n = ((l + 9 + 63) >> 6) << 6;
+    var b = new Uint8Array(n);
+    b.set(m); b[l] = 0x80;
+    var hi = Math.floor(l / 0x20000000) >>> 0, lo = (l << 3) >>> 0;
+    if (grosBout) {
+      b[n - 8] = hi >>> 24; b[n - 7] = hi >>> 16; b[n - 6] = hi >>> 8; b[n - 5] = hi;
+      b[n - 4] = lo >>> 24; b[n - 3] = lo >>> 16; b[n - 2] = lo >>> 8; b[n - 1] = lo;
+    } else {
+      b[n - 8] = lo; b[n - 7] = lo >>> 8; b[n - 6] = lo >>> 16; b[n - 5] = lo >>> 24;
+      b[n - 4] = hi; b[n - 3] = hi >>> 8; b[n - 2] = hi >>> 16; b[n - 1] = hi >>> 24;
+    }
+    return b;
+  }
+
+  function sortieGrosBout(H) {
+    var o = new Uint8Array(H.length * 4);
+    for (var i = 0; i < H.length; i++) {
+      o[4 * i] = H[i] >>> 24; o[4 * i + 1] = H[i] >>> 16; o[4 * i + 2] = H[i] >>> 8; o[4 * i + 3] = H[i];
+    }
+    return o;
+  }
+
+  var K256 = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+
+  function rotd(x, n) { return (x >>> n) | (x << (32 - n)); }
+  function rotg(x, n) { return (x << n) | (x >>> (32 - n)); }
+
+  function sha256(entree) {
+    var b = remplir(aOctets(entree), true);
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var W = new Array(64);
+    for (var off = 0; off < b.length; off += 64) {
+      for (var i = 0; i < 16; i++) {
+        var p = off + 4 * i;
+        W[i] = (b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3];
+      }
+      for (i = 16; i < 64; i++) {
+        var s0 = rotd(W[i - 15], 7) ^ rotd(W[i - 15], 18) ^ (W[i - 15] >>> 3);
+        var s1 = rotd(W[i - 2], 17) ^ rotd(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+        W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+      }
+      var a = H[0], bb = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (i = 0; i < 64; i++) {
+        var S1 = rotd(e, 6) ^ rotd(e, 11) ^ rotd(e, 25);
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + K256[i] + W[i]) | 0;
+        var S0 = rotd(a, 2) ^ rotd(a, 13) ^ rotd(a, 22);
+        var maj = (a & bb) ^ (a & c) ^ (bb & c);
+        var t2 = (S0 + maj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return sortieGrosBout(H);
+  }
+
+  function sha1(entree) {
+    var b = remplir(aOctets(entree), true);
+    var H = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+    var W = new Array(80);
+    for (var off = 0; off < b.length; off += 64) {
+      for (var i = 0; i < 16; i++) {
+        var p = off + 4 * i;
+        W[i] = (b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3];
+      }
+      for (i = 16; i < 80; i++) W[i] = rotg(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
+      var a = H[0], bb = H[1], c = H[2], d = H[3], e = H[4];
+      for (i = 0; i < 80; i++) {
+        var f, k;
+        if (i < 20) { f = (bb & c) | (~bb & d); k = 0x5a827999; }
+        else if (i < 40) { f = bb ^ c ^ d; k = 0x6ed9eba1; }
+        else if (i < 60) { f = (bb & c) | (bb & d) | (c & d); k = 0x8f1bbcdc; }
+        else { f = bb ^ c ^ d; k = 0xca62c1d6; }
+        var t = (rotg(a, 5) + f + e + k + W[i]) | 0;
+        e = d; d = c; c = rotg(bb, 30); bb = a; a = t;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0;
+    }
+    return sortieGrosBout(H);
+  }
+
+  var RMD_R = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8,
+    3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12,
+    1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2,
+    4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13
+  ];
+  var RMD_R2 = [
+    5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12,
+    6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2,
+    15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13,
+    8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14,
+    12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11
+  ];
+  var RMD_S = [
+    11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8,
+    7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12,
+    11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5,
+    11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12,
+    9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6
+  ];
+  var RMD_S2 = [
+    8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6,
+    9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11,
+    9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5,
+    15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8,
+    8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11
+  ];
+  var RMD_K = [0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xa953fd4e];
+  var RMD_K2 = [0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x7a6d76e9, 0x00000000];
+
+  function rmdF(j, x, y, z) {
+    if (j < 16) return x ^ y ^ z;
+    if (j < 32) return (x & y) | (~x & z);
+    if (j < 48) return (x | ~y) ^ z;
+    if (j < 64) return (x & z) | (y & ~z);
+    return x ^ (y | ~z);
+  }
+
+  function ripemd160(entree) {
+    var b = remplir(aOctets(entree), false);
+    var h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+    var X = new Array(16);
+    for (var off = 0; off < b.length; off += 64) {
+      for (var i = 0; i < 16; i++) {
+        var p = off + 4 * i;
+        X[i] = b[p] | (b[p + 1] << 8) | (b[p + 2] << 16) | (b[p + 3] << 24);
+      }
+      var al = h0, bl = h1, cl = h2, dl = h3, el = h4;
+      var ar = h0, br = h1, cr = h2, dr = h3, er = h4;
+      for (var j = 0; j < 80; j++) {
+        var t = (al + rmdF(j, bl, cl, dl) + X[RMD_R[j]] + RMD_K[j >> 4]) | 0;
+        t = (rotg(t, RMD_S[j]) + el) | 0;
+        al = el; el = dl; dl = rotg(cl, 10); cl = bl; bl = t;
+        t = (ar + rmdF(79 - j, br, cr, dr) + X[RMD_R2[j]] + RMD_K2[j >> 4]) | 0;
+        t = (rotg(t, RMD_S2[j]) + er) | 0;
+        ar = er; er = dr; dr = rotg(cr, 10); cr = br; br = t;
+      }
+      t = (h1 + cl + dr) | 0;
+      h1 = (h2 + dl + er) | 0;
+      h2 = (h3 + el + ar) | 0;
+      h3 = (h4 + al + br) | 0;
+      h4 = (h0 + bl + cr) | 0;
+      h0 = t;
+    }
+    var H = [h0, h1, h2, h3, h4], o = new Uint8Array(20);
+    for (i = 0; i < 5; i++) {
+      o[4 * i] = H[i]; o[4 * i + 1] = H[i] >>> 8; o[4 * i + 2] = H[i] >>> 16; o[4 * i + 3] = H[i] >>> 24;
+    }
+    return o;
+  }
+
+  function sha256Hex(x) { return hex(sha256(x)); }
+
+  /* ---------- Outils ---------- */
+
+  function possede(o, k) { return o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k); }
+  function estObjet(o) { return o !== null && typeof o === "object" && !Array.isArray(o); }
+  function echec(message) { return { etat: "echec", message: message }; }
+
+  // Ordre des codes : comparaison des unités de code UTF-16, l'ordre par défaut de JavaScript.
+  function comparerCodes(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+
+  /* ---------- Étape 1 : du contenu à l'empreinte ---------- */
+
+  var FORMULES = {
+    "moment-1": { nature: "moment", mode: "canonique" },
+    "moment-2": { nature: "moment", mode: "canonique" },
+    "passeport-1": { nature: "passeport", mode: "canonique" },
+    "moment-3": { nature: "moment", mode: "champs", prefixe: "moment:3:" },
+    "passeport-2": { nature: "passeport", mode: "champs", prefixe: "passeport:2:" }
+  };
+
+  var POSITIONS = {
+    "moment-1": ["id", "portfolio", "auteur", "type", "titre", "texte", "image", "justificatif", "niveauDePreuve", "systeme", "source", "date", "creeLe", "precedente"],
+    "moment-2": [null, "id", "portfolio", "auteur", "type", "titre", "texte", "image", "justificatif", "systeme", "source", "date", "creeLe", "details", "prive", "precedente"],
+    "passeport-1": [null, null, "id", "portfolio", "type", "cible", "contenu", "fichier", "sel", "creeLe"]
+  };
+
+  function engagement(nom, valeur, sel) {
+    return sha256Hex("champ:" + nom + ":" + sel + ":" + valeur);
+  }
+
+  // Lit un texte JSON sans jamais l'exécuter. Renvoie { ok, valeur }.
+  function lireJson(texte) {
+    try { return { ok: true, valeur: JSON.parse(texte) }; } catch (e) { return { ok: false }; }
+  }
+
+  function lireCanonique(ligne, formule) {
+    if (typeof ligne.canonique !== "string") return { erreur: "le texte canonique n’est pas une chaîne" };
+    var calc = sha256Hex(ligne.canonique);
+    if (calc !== ligne.empreinte) {
+      return { erreur: "le texte canonique ne donne pas l’empreinte annoncée", calculee: calc };
+    }
+    var lu = lireJson(ligne.canonique);
+    if (!lu.ok || !Array.isArray(lu.valeur)) return { erreur: "le texte canonique n’est pas un tableau JSON", calculee: calc };
+    var t = lu.valeur, noms = POSITIONS[formule];
+    var forme = t.length === noms.length;
+    if (formule === "moment-2") forme = forme && t[0] === 2;
+    if (formule === "passeport-1") forme = forme && t[0] === "passeport" && t[1] === 1;
+    if (!forme) return { erreur: "le texte canonique ne suit pas la formule " + formule, calculee: calc };
+    var valeurs = Object.create(null);
+    for (var i = 0; i < noms.length; i++) if (noms[i]) valeurs[noms[i]] = t[i];
+    // details (moment-2) et contenu (passeport-1) sont eux-mêmes des textes JSON.
+    if (typeof valeurs.details === "string") valeurs.details = valeurs.details === "" ? null : lireJsonOuTexte(valeurs.details);
+    if (typeof valeurs.contenu === "string") valeurs.contenu = valeurs.contenu === "" ? null : lireJsonOuTexte(valeurs.contenu);
+    return { valeurs: valeurs, caches: Object.create(null), calculee: calc };
+  }
+
+  function lireJsonOuTexte(s) { var l = lireJson(s); return l.ok ? l.valeur : s; }
+
+  function lireChamps(ligne, formule) {
+    var champs = ligne.champs === undefined ? {} : ligne.champs;
+    var caches = ligne.caches === undefined ? {} : ligne.caches;
+    if (!estObjet(champs)) return { erreur: "« champs » n’est pas un objet" };
+    if (!estObjet(caches)) return { erreur: "« caches » n’est pas un objet" };
+    var noms = [], vus = Object.create(null), engagements = Object.create(null), nom;
+    for (nom in champs) {
+      if (!possede(champs, nom)) continue;
+      var c = champs[nom];
+      if (!estObjet(c) || typeof c.valeur !== "string" || typeof c.sel !== "string") {
+        return { erreur: "le champ « " + nom + " » n’a pas de valeur et de sel textuels" };
+      }
+      engagements[nom] = engagement(nom, c.valeur, c.sel);
+      vus[nom] = true; noms.push(nom);
+    }
+    for (nom in caches) {
+      if (!possede(caches, nom)) continue;
+      if (vus[nom]) return { erreur: "le champ « " + nom + " » est à la fois montré et caché" };
+      if (typeof caches[nom] !== "string" || !HEX64.test(caches[nom])) return { erreur: "l’engagement du champ caché « " + nom + " » n’est pas une empreinte" };
+      engagements[nom] = caches[nom];
+      noms.push(nom);
+    }
+    noms.sort(comparerCodes);
+    var paires = noms.map(function (n) { return n + "=" + engagements[n]; });
+    var calc = sha256Hex(FORMULES[formule].prefixe + paires.join(";"));
+    if (calc !== ligne.empreinte) return { erreur: "les champs ne donnent pas l’empreinte annoncée", calculee: calc };
+
+    var valeurs = Object.create(null), cachesLus = Object.create(null), illisibles = [];
+    for (nom in champs) {
+      if (!possede(champs, nom)) continue;
+      var lu = lireJson(champs[nom].valeur);
+      if (!lu.ok) { illisibles.push(nom); continue; }
+      if (nom.indexOf("contenu.") === 0) {
+        if (!valeurs.contenu) valeurs.contenu = Object.create(null);
+        valeurs.contenu[nom.slice(8)] = lu.valeur;
+      } else valeurs[nom] = lu.valeur;
+    }
+    for (nom in caches) if (possede(caches, nom)) cachesLus[nom] = true;
+    return { valeurs: valeurs, caches: cachesLus, illisibles: illisibles, calculee: calc };
+  }
+
+  /* ---------- Étape 2 : de l'empreinte à la racine ---------- */
+
+  function remonterChemin(empreinte, chemin) {
+    if (!Array.isArray(chemin)) throw new Error("le chemin n’est pas une liste");
+    if (chemin.length > LIMITES.cheminMax) throw new Error("le chemin est trop long");
+    var h = empreinte;
+    for (var i = 0; i < chemin.length; i++) {
+      var e = chemin[i];
+      if (!estObjet(e) || typeof e.empreinte !== "string" || !HEX64.test(e.empreinte)) throw new Error("l’étape " + (i + 1) + " du chemin n’a pas d’empreinte valide");
+      if (e.cote === "droite") h = sha256Hex(h + e.empreinte);
+      else if (e.cote === "gauche") h = sha256Hex(e.empreinte + h);
+      else throw new Error("l’étape " + (i + 1) + " du chemin n’indique pas de côté (« droite » ou « gauche »)");
+    }
+    return h;
+  }
+
+  /* ---------- Étape 3 : de la racine au fichier OpenTimestamps ---------- */
+
+  var OTS_MAGIQUE = [0x00, 0x4f, 0x70, 0x65, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x73, 0x00,
+    0x00, 0x50, 0x72, 0x6f, 0x6f, 0x66, 0x00, 0xbf, 0x89, 0xe2, 0xe8, 0x84, 0xe8, 0x92, 0x94];
+  var ATT_BITCOIN = "0588960d73d71901";
+  var ATT_ATTENTE = "83dfe30d2ef90c8e";
+  var OPS = {
+    0xf0: { nom: "append", argument: true },
+    0xf1: { nom: "prepend", argument: true },
+    0xf2: { nom: "reverse" },
+    0xf3: { nom: "hexlify" },
+    0x02: { nom: "sha1" },
+    0x03: { nom: "ripemd160" },
+    0x08: { nom: "sha256" }
+  };
+
+  function Lecteur(octets) { this.o = octets; this.p = 0; }
+  Lecteur.prototype.octet = function () {
+    if (this.p >= this.o.length) throw new Error("fin de fichier inattendue");
+    return this.o[this.p++];
+  };
+  Lecteur.prototype.octets = function (n) {
+    if (this.p + n > this.o.length) throw new Error("fin de fichier inattendue");
+    var r = this.o.subarray(this.p, this.p + n); this.p += n; return r;
+  };
+  // Varuint OpenTimestamps : base 128, petit-boutiste, bit de poids fort = « la suite continue ».
+  Lecteur.prototype.varuint = function () {
+    var valeur = 0, facteur = 1, b;
+    do {
+      b = this.octet();
+      valeur += (b & 0x7f) * facteur;
+      facteur *= 128;
+      if (facteur > 9007199254740992) throw new Error("entier trop grand");
+    } while (b & 0x80);
+    return valeur;
+  };
+  // Varbytes : une longueur en varuint, puis les octets.
+  Lecteur.prototype.varbytes = function (max, min) {
+    var n = this.varuint();
+    if (n > max) throw new Error("bloc d’octets trop long (" + n + ")");
+    if (min !== undefined && n < min) throw new Error("bloc d’octets trop court");
+    return this.octets(n);
+  };
+
+  function appliquer(op, arg, msg) {
+    var r;
+    switch (op) {
+      case "append": r = concat(msg, arg); break;
+      case "prepend": r = concat(arg, msg); break;
+      case "reverse": r = new Uint8Array(msg.length); for (var i = 0; i < msg.length; i++) r[i] = msg[msg.length - 1 - i]; break;
+      case "hexlify": r = utf8(hex(msg)); break;
+      case "sha1": r = sha1(msg); break;
+      case "ripemd160": r = ripemd160(msg); break;
+      case "sha256": r = sha256(msg); break;
+      default: throw new Error("opération inconnue");
+    }
+    if (r.length > LIMITES.messageMax) throw new Error("message trop long après " + op);
+    return r;
+  }
+
+  function lireAttestation(L) {
+    var etiquette = hex(L.octets(8));
+    var charge = L.varbytes(LIMITES.attestationMax);
+    var C = new Lecteur(charge);
+    if (etiquette === ATT_BITCOIN) {
+      var hauteur = C.varuint();
+      if (C.p !== charge.length) throw new Error("attestation Bitcoin mal formée");
+      return { type: "bitcoin", hauteur: hauteur };
+    }
+    if (etiquette === ATT_ATTENTE) {
+      var uri = C.varbytes(LIMITES.uriMax);
+      if (C.p !== charge.length) throw new Error("attestation en attente mal formée");
+      var texte = "";
+      for (var i = 0; i < uri.length; i++) {
+        var c = uri[i];
+        if (!((c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || c === 0x2e || c === 0x2d || c === 0x5f || c === 0x2f || c === 0x3a)) {
+          throw new Error("adresse de calendrier invalide");
+        }
+        texte += String.fromCharCode(c);
+      }
+      return { type: "attente", calendrier: texte };
+    }
+    return { type: "inconnue", etiquette: etiquette };
+  }
+
+  function lireArbre(L, msg, profondeur, compteur, sortie) {
+    if (profondeur > LIMITES.profondeurMax) throw new Error("arbre trop profond");
+    function traiter(tag) {
+      if (tag === 0x00) {
+        var a = lireAttestation(L);
+        a.message = hex(msg);
+        a.longueur = msg.length;
+        sortie.push(a);
+        return;
+      }
+      var op = OPS[tag];
+      if (!op) throw new Error("opération inconnue (0x" + (tag < 16 ? "0" : "") + tag.toString(16) + ")");
+      var arg = op.argument ? L.varbytes(LIMITES.argumentMax, 1) : null;
+      if (++compteur.n > LIMITES.operationsMax) throw new Error("trop d’opérations");
+      if (msg.length > LIMITES.messageMax) throw new Error("message trop long");
+      lireArbre(L, appliquer(op.nom, arg, msg), profondeur + 1, compteur, sortie);
+    }
+    var tag = L.octet();
+    while (tag === 0xff) {
+      traiter(L.octet());
+      tag = L.octet();
+    }
+    traiter(tag);
+  }
+
+  // Analyse complète d'un fichier .ots détaché. Renvoie { empreinte, attestations }.
+  function analyserOts(octets) {
+    if (octets.length > LIMITES.otsMax) throw new Error("fichier trop volumineux");
+    var L = new Lecteur(octets);
+    var tete = L.octets(OTS_MAGIQUE.length);
+    for (var i = 0; i < OTS_MAGIQUE.length; i++) if (tete[i] !== OTS_MAGIQUE[i]) throw new Error("ce n’est pas un fichier OpenTimestamps (en-tête absent)");
+    var version = L.varuint();
+    if (version !== 1) throw new Error("version " + version + " du format non prise en charge");
+    var typeEmpreinte = L.octet();
+    if (typeEmpreinte !== 0x08) throw new Error("l’empreinte de départ n’est pas un sha256");
+    var depart = L.octets(32);
+    var attestations = [];
+    lireArbre(L, depart, 0, { n: 0 }, attestations);
+    if (L.p !== octets.length) throw new Error("octets en trop à la fin du fichier");
+    return { empreinte: hex(depart), attestations: attestations };
+  }
+
+  function analyserSceau(id, s) {
+    var r = { id: id, racine: null, scelleLe: null, blocAnnonce: null, ots: null, attestations: [], etat: "echec", date: null };
+    if (!estObjet(s)) { r.ots = echec("le sceau n’est pas un objet"); return r; }
+    if (typeof s.racine !== "string" || !HEX64.test(s.racine)) { r.ots = echec("la racine n’est pas une empreinte sha256"); return r; }
+    r.racine = s.racine;
+    r.scelleLe = typeof s.scelleLe === "string" ? s.scelleLe : null;
+    r.blocAnnonce = typeof s.bloc === "number" ? s.bloc : null;
+    try {
+      if (typeof s.ots === "string" && s.ots.length > LIMITES.otsMax * 1.4) throw new Error("fichier trop volumineux");
+      var a = analyserOts(depuisBase64(s.ots));
+      if (a.empreinte !== s.racine) {
+        r.ots = echec("le fichier OpenTimestamps part d’une autre empreinte que la racine du sceau");
+        r.otsDepart = a.empreinte;
+        return r;
+      }
+      r.ots = { etat: "ok" };
+      r.attestations = a.attestations.map(function (x) {
+        if (x.type === "bitcoin") {
+          if (x.longueur !== 32) return { type: "bitcoin", hauteur: x.hauteur, etat: "echec", message: "le message attesté ne fait pas 32 octets" };
+          var octetsMsg = [];
+          for (var i = 0; i < 64; i += 2) octetsMsg.unshift(x.message.slice(i, i + 2));
+          return { type: "bitcoin", hauteur: x.hauteur, racineAttendue: octetsMsg.join(""), etat: "a-consulter", sources: [] };
+        }
+        if (x.type === "attente") return { type: "attente", calendrier: x.calendrier };
+        return { type: "inconnue", etiquette: x.etiquette };
+      });
+      r.etat = etatSceau(r);
+    } catch (e) {
+      r.ots = echec("fichier OpenTimestamps illisible : " + e.message);
+    }
+    return r;
+  }
+
+  function etatSceau(s) {
+    if (!s.ots || s.ots.etat !== "ok") return "echec";
+    var btc = s.attestations.filter(function (a) { return a.type === "bitcoin"; });
+    if (btc.some(function (a) { return a.etat === "echec"; })) return "echec";
+    var confirmees = btc.filter(function (a) { return a.etat === "confirmee"; });
+    if (confirmees.length) {
+      s.date = Math.min.apply(null, confirmees.map(function (a) { return a.horodatage; }));
+      return "bitcoin";
+    }
+    if (btc.some(function (a) { return a.etat === "a-consulter"; })) return "a-consulter";
+    if (btc.some(function (a) { return a.etat === "injoignable"; })) return "injoignable";
+    return "attente";
+  }
+
+  /* ---------- Une ligne ---------- */
+
+  function verifierLigne(l, index, sceaux) {
+    var r = {
+      index: index, nature: null, formule: null, sceau: null, heritee: false,
+      contenu: null, chemin: null, valeurs: null, caches: null, illisibles: [], divulgue: false, empreinte: null
+    };
+    if (!estObjet(l)) { r.contenu = echec("la ligne n’est pas un objet"); r.chemin = echec("non vérifié"); return r; }
+    r.nature = typeof l.nature === "string" ? l.nature : null;
+    r.formule = typeof l.formule === "string" ? l.formule : null;
+    r.sceau = typeof l.sceau === "string" ? l.sceau : null;
+    r.heritee = l.heritee === true;
+    r.empreinte = typeof l.empreinte === "string" ? l.empreinte : null;
+
+    // Contenu → empreinte
+    var f = possede(FORMULES, r.formule) ? FORMULES[r.formule] : null;
+    if (!f) r.contenu = echec("formule inconnue : " + String(r.formule));
+    else if (r.nature !== f.nature) r.contenu = echec("la nature « " + String(r.nature) + " » ne correspond pas à la formule " + r.formule);
+    else if (!r.empreinte || !HEX64.test(r.empreinte)) r.contenu = echec("l’empreinte n’est pas un sha256 hexadécimal minuscule");
+    else {
+      var aCanonique = l.canonique !== undefined && l.canonique !== null;
+      var aChamps = (l.champs !== undefined && l.champs !== null) || (l.caches !== undefined && l.caches !== null);
+      var lu = null;
+      if (f.mode === "canonique") {
+        if (aChamps) r.contenu = echec("une formule ancienne ne porte pas de champs");
+        else if (aCanonique) lu = lireCanonique(l, r.formule);
+      } else {
+        if (aCanonique) r.contenu = echec("une formule par champs ne porte pas de texte canonique");
+        else if (aChamps) lu = lireChamps(l, r.formule);
+      }
+      if (!r.contenu) {
+        if (lu && lu.erreur) { r.contenu = echec(lu.erreur); r.empreinteCalculee = lu.calculee || null; }
+        else if (lu) {
+          r.contenu = { etat: "ok" };
+          r.divulgue = true;
+          r.valeurs = lu.valeurs; r.caches = lu.caches; r.illisibles = lu.illisibles || [];
+        } else r.contenu = { etat: "non-divulgue" };
+      }
+    }
+
+    // Empreinte → racine
+    if (!r.sceau || !possede(sceaux, r.sceau)) r.chemin = echec("le sceau « " + String(r.sceau) + " » est absent du dossier");
+    else if (!r.empreinte || !HEX64.test(r.empreinte)) r.chemin = echec("pas d’empreinte de départ");
+    else {
+      try {
+        var h = remonterChemin(r.empreinte, l.chemin === undefined ? [] : l.chemin);
+        var racine = estObjet(sceaux[r.sceau]) ? sceaux[r.sceau].racine : null;
+        r.racineCalculee = h;
+        r.chemin = h === racine ? { etat: "ok" } : echec("le chemin ne mène pas à la racine du sceau");
+      } catch (e) { r.chemin = echec(e.message); }
+    }
+    return r;
+  }
+
+  /* ---------- Le dossier ---------- */
+
+  function verifierHorsLigne(dossier) {
+    var rap = { dossier: null, erreur: null, lignes: [], sceaux: Object.create(null), ordreSceaux: [], bitcoinConsulte: false };
+    if (!estObjet(dossier)) { rap.erreur = "le fichier n’est pas un objet JSON"; return rap; }
+    if (dossier.format !== "coindesmontres.dossier-preuve") { rap.erreur = "ce n’est pas un dossier de preuve coindesmontres.fr"; return rap; }
+    if (dossier.version !== 1) { rap.erreur = "version " + String(dossier.version) + " du dossier non prise en charge"; return rap; }
+    if (!Array.isArray(dossier.lignes)) { rap.erreur = "le dossier n’a pas de liste de lignes"; return rap; }
+    if (!estObjet(dossier.sceaux)) { rap.erreur = "le dossier n’a pas de sceaux"; return rap; }
+    if (dossier.lignes.length > LIMITES.lignesMax) { rap.erreur = "le dossier a trop de lignes"; return rap; }
+    if (dossier.lignes.length === 0) { rap.erreur = "le dossier ne contient aucune ligne"; return rap; }
+    rap.dossier = {
+      genereLe: typeof dossier.genereLe === "string" ? dossier.genereLe : null,
+      source: typeof dossier.source === "string" ? dossier.source : null,
+      montre: estObjet(dossier.montre) ? dossier.montre : null,
+      enAttente: typeof dossier.enAttente === "number" ? dossier.enAttente : 0
+    };
+    for (var id in dossier.sceaux) {
+      if (!possede(dossier.sceaux, id)) continue;
+      rap.sceaux[id] = analyserSceau(id, dossier.sceaux[id]);
+      rap.ordreSceaux.push(id);
+    }
+    rap.lignes = dossier.lignes.map(function (l, i) { return verifierLigne(l, i, dossier.sceaux); });
+    return rap;
+  }
+
+  /* ---------- Étape 4 : de OpenTimestamps à Bitcoin ---------- */
+
+  function avecDelai(promesse, ms, abandon) {
+    return new Promise(function (resoudre, rejeter) {
+      var t = setTimeout(function () { if (abandon) abandon.abort(); rejeter(new Error("délai dépassé")); }, ms);
+      promesse.then(function (v) { clearTimeout(t); resoudre(v); }, function (e) { clearTimeout(t); rejeter(e); });
+    });
+  }
+
+  function lireTexteBorne(reponse) {
+    return reponse.text().then(function (t) {
+      if (t.length > LIMITES.reponseMax) throw new Error("réponse trop longue");
+      return t;
+    });
+  }
+
+  function interrogerSource(source, hauteur, recuperer, delai) {
+    function demander(url) {
+      var abandon = typeof AbortController === "function" ? new AbortController() : null;
+      var options = { method: "GET", credentials: "omit", cache: "no-store", redirect: "error", referrerPolicy: "no-referrer" };
+      if (abandon) options.signal = abandon.signal;
+      return avecDelai(recuperer(url, options), delai, abandon).then(function (rep) {
+        if (!rep.ok) throw new Error("réponse " + rep.status);
+        return avecDelai(lireTexteBorne(rep), delai, abandon);
+      });
+    }
+    var rapport = { nom: source.nom, etat: "muette" };
+    return demander(source.base + "/block-height/" + hauteur).then(function (t) {
+      var hash = t.trim();
+      if (!HEX64.test(hash)) throw new Error("hash de bloc illisible");
+      rapport.hash = hash;
+      return demander(source.base + "/block/" + hash);
+    }).then(function (t) {
+      var j = JSON.parse(t);
+      if (!estObjet(j) || j.id !== rapport.hash || j.height !== hauteur) throw new Error("réponse incohérente");
+      if (typeof j.merkle_root !== "string" || !HEX64.test(j.merkle_root) || typeof j.timestamp !== "number") throw new Error("bloc illisible");
+      rapport.etat = "repond";
+      rapport.merkle = j.merkle_root;
+      rapport.horodatage = j.timestamp;
+      return rapport;
+    }).catch(function (e) {
+      rapport.etat = "muette";
+      rapport.message = e && e.message ? e.message : "pas de réponse";
+      return rapport;
+    });
+  }
+
+  // Interroge les deux explorateurs pour chaque attestation Bitcoin. recuperer = fetch.
+  function consulterBitcoin(rap, recuperer, options) {
+    options = options || {};
+    var delai = options.delai || 12000;
+    var parHauteur = Object.create(null), taches = [];
+    rap.ordreSceaux.forEach(function (id) {
+      var s = rap.sceaux[id];
+      s.attestations.forEach(function (a) {
+        if (a.type !== "bitcoin" || a.etat !== "a-consulter") return;
+        if (!Number.isInteger(a.hauteur) || a.hauteur < 0 || a.hauteur > 100000000) { a.etat = "echec"; a.message = "hauteur de bloc invalide"; return; }
+        if (!parHauteur[a.hauteur]) {
+          parHauteur[a.hauteur] = typeof recuperer === "function"
+            ? Promise.all(SOURCES.map(function (src) { return interrogerSource(src, a.hauteur, recuperer, delai); }))
+            : Promise.resolve(SOURCES.map(function (src) { return { nom: src.nom, etat: "muette", message: "réseau indisponible" }; }));
+        }
+        taches.push(parHauteur[a.hauteur].then(function (reponses) { conclureAttestation(a, reponses); }));
+      });
+    });
+    return Promise.all(taches).then(function () {
+      rap.ordreSceaux.forEach(function (id) { rap.sceaux[id].etat = etatSceau(rap.sceaux[id]); });
+      rap.bitcoinConsulte = true;
+      return rap;
+    });
+  }
+
+  function conclureAttestation(a, reponses) {
+    a.sources = reponses.map(function (r) {
+      var c = { nom: r.nom, etat: r.etat, message: r.message || null };
+      if (r.etat === "repond") {
+        c.hash = r.hash; c.merkle = r.merkle; c.horodatage = r.horodatage;
+        c.etat = r.merkle === a.racineAttendue ? "accord" : "desaccord";
+      }
+      return c;
+    });
+    var repondent = a.sources.filter(function (c) { return c.etat !== "muette"; });
+    if (!repondent.length) { a.etat = "injoignable"; return; }
+    if (repondent.some(function (c) { return c.etat === "desaccord"; })) {
+      a.etat = "echec";
+      a.message = "la racine de Merkle du bloc " + a.hauteur + " n’est pas celle attestée par le fichier";
+      return;
+    }
+    var heures = repondent.map(function (c) { return c.horodatage; });
+    if (heures.some(function (h) { return h !== heures[0]; })) { a.etat = "echec"; a.message = "les explorateurs ne donnent pas la même heure de bloc"; return; }
+    a.etat = "confirmee";
+    a.hash = repondent[0].hash;
+    a.horodatage = heures[0];
+    a.accord = repondent.length;
+  }
+
+  /* ---------- Verdict ---------- */
+
+  // État d'une ligne : "echec", "verifie", "attente", "injoignable" (Bitcoin non consulté faute de réseau), "en-cours".
+  function etatLigne(r, rap) {
+    if (r.contenu.etat === "echec") return { etat: "echec", etape: "contenu", message: r.contenu.message };
+    if (r.chemin.etat === "echec") return { etat: "echec", etape: "chemin", message: r.chemin.message };
+    var s = rap.sceaux[r.sceau];
+    if (!s || s.ots.etat !== "ok") return { etat: "echec", etape: "horodatage", message: s ? s.ots.message : "sceau absent" };
+    if (s.etat === "echec") {
+      var a = s.attestations.filter(function (x) { return x.etat === "echec"; })[0];
+      return { etat: "echec", etape: "bitcoin", message: a && a.message ? a.message : "attestation Bitcoin contredite" };
+    }
+    if (s.etat === "bitcoin") return { etat: "verifie" };
+    if (s.etat === "a-consulter") return { etat: rap.bitcoinConsulte ? "injoignable" : "en-cours" };
+    if (s.etat === "injoignable") return { etat: "injoignable" };
+    return { etat: "attente" };
+  }
+
+  function verdict(rap) {
+    if (rap.erreur) return { etat: "echec", etape: "dossier", ligne: null, message: rap.erreur };
+    var etats = rap.lignes.map(function (r) { return etatLigne(r, rap); });
+    for (var i = 0; i < etats.length; i++) {
+      if (etats[i].etat === "echec") return { etat: "echec", etape: etats[i].etape, ligne: i, message: etats[i].message };
+    }
+    var compte = function (e) { return etats.filter(function (x) { return x.etat === e; }).length; };
+    var nonDivulguees = rap.lignes.filter(function (r) { return r.contenu.etat === "non-divulgue"; }).length;
+    var base = { lignes: etats.length, nonDivulguees: nonDivulguees, attente: compte("attente"), injoignables: compte("injoignable") };
+    if (compte("en-cours")) return Object.assign(base, { etat: "en-cours" });
+    if (compte("verifie") === etats.length) return Object.assign(base, { etat: "verifie" });
+    if (compte("attente")) return Object.assign(base, { etat: "attente" });
+    return Object.assign(base, { etat: "injoignable" });
+  }
+
+  /* ---------- Fichier d'un papier ---------- */
+
+  function empreinteFichier(r) {
+    if (r.contenu.etat !== "ok" || !r.valeurs) return null;
+    var f = r.valeurs.fichier;
+    return typeof f === "string" && HEX64.test(f) ? f : null;
+  }
+
+  function chercherFichier(rap, octets) {
+    var e = sha256Hex(octets);
+    var correspond = [];
+    rap.lignes.forEach(function (r, i) { if (empreinteFichier(r) === e) correspond.push(i); });
+    var caches = rap.lignes.filter(function (r) { return r.caches && r.caches.fichier; }).length;
+    return { empreinte: e, lignes: correspond, fichiersCaches: caches };
+  }
+
+  return {
+    LIMITES: LIMITES, SOURCES: SOURCES,
+    utf8: utf8, hex: hex, depuisBase64: depuisBase64,
+    sha256: sha256, sha1: sha1, ripemd160: ripemd160, sha256Hex: sha256Hex,
+    engagement: engagement, remonterChemin: remonterChemin, analyserOts: analyserOts,
+    verifierHorsLigne: verifierHorsLigne, consulterBitcoin: consulterBitcoin,
+    etatLigne: etatLigne, verdict: verdict, chercherFichier: chercherFichier, empreinteFichier: empreinteFichier
+  };
+})();
+</script>
+
+<script id="interface">
+// Adresse du code public de cet outil. Vide : aucun lien n'est affiché.
+var ADRESSE_CODE_PUBLIC = "https://github.com/coindesmontres/verificateur-preuve";
+(function () {
+  "use strict";
+  var V = VerifPreuve;
+  var FINE = " ", INS = " ";
+  var TAILLE_DOSSIER_MAX = 20 * 1048576;
+  var TAILLE_PAPIER_MAX = 200 * 1048576;
+
+  var TYPES_MOMENT = {
+    SERVICE: "Entretien", STRAP: "Changement de bracelet", PRECISION: "Mesure de précision", ACQUISITION: "Achat",
+    LISTED: "Mise en vente", TRANSFER: "Changement de propriétaire", WORN: "Portée", PHOTO: "Photo",
+    MILESTONE: "Étape", NOTE: "Note"
+  };
+  var TYPES_PASSEPORT = {
+    CREATION: "Identité de la montre", IDENTITE: "Identité mise à jour", PHOTO_FACE: "Photo de face",
+    PHOTO_SERIE: "Photo du numéro de série", DOCUMENT_AJOUTE: "Papier ajouté", DOCUMENT_RETIRE: "Papier retiré",
+    CONTRESIGNATURE: "Réponse d’un atelier"
+  };
+  var SORTES_PAPIER = { FACTURE: "Facture", CERTIFICAT_ORIGINE: "Certificat d’origine", AUTRE: "Autre papier" };
+  var TRAVAUX = {
+    REVISION: "Révision", ETANCHEITE: "Contrôle d’étanchéité", PIECE: "Remplacement de pièce", REGLAGE: "Réglage",
+    POLISSAGE: "Polissage", NETTOYAGE: "Nettoyage"
+  };
+  var MESURES = { marche: "Marche", etancheite: "Étanchéité", amplitude: "Amplitude", battement: "Battement" };
+  var ETAPES = {
+    dossier: "Lecture du dossier",
+    contenu: "Contenu → empreinte",
+    chemin: "Empreinte → racine",
+    horodatage: "Racine → fichier OpenTimestamps",
+    bitcoin: "OpenTimestamps → Bitcoin"
+  };
+
+  /* Icônes : tracés SVG constants, construits par createElementNS. */
+  var ICONES = {
+    sceau: ["M12 3l7 3v5c0 4.4-3 8.3-7 9.6C8 19.3 5 15.4 5 11V6l7-3z", "M9 12l2 2 4-4"],
+    alerte: ["M12 4l9 16H3l9-16z", "M12 10v4", "M12 17.5v.01"],
+    horloge: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 7v5l3 2"],
+    montre: ["M9 3h6l1 4H8l1-4z", "M9 21h6l1-4H8l1 4z", "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z", "M12 10v2l1.5 1"],
+    document: ["M7 3h7l4 4v14H7V3z", "M14 3v4h4", "M10 12h5", "M10 16h5"],
+    carnet: ["M6 4h11a1 1 0 0 1 1 1v15H7a1 1 0 0 1-1-1V4z", "M9 8h6", "M9 12h6"],
+    chaine: ["M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1", "M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"],
+    info: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 11v5", "M12 7.5v.01"]
+  };
+  function icone(nom) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8"); svg.setAttribute("stroke-linecap", "round"); svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    (ICONES[nom] || ICONES.info).forEach(function (d) {
+      var p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.appendChild(p);
+    });
+    return svg;
+  }
+  function poserIcone(id, nom) { var e = document.getElementById(id); vider(e); e.appendChild(icone(nom)); }
+
+  /* Construction du DOM : textContent seulement pour toute donnée du dossier. */
+  function el(tag, classe, texte) {
+    var e = document.createElement(tag);
+    if (classe) e.className = classe;
+    if (texte !== undefined && texte !== null) e.textContent = String(texte);
+    return e;
+  }
+  function vider(e) { while (e.firstChild) e.removeChild(e.firstChild); }
+  function pastille(classe, texte) { return el("span", "pastille " + classe, texte); }
+
+  // « 1er mars 2024 », ou « 16 novembre 2026 à 17 h 52 » (heure de Paris) pour un instant précis.
+  // Une date sans heure reste en UTC : c'est un jour déclaré, il ne doit pas glisser.
+  var MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  function dateFr(iso, avecHeure) {
+    if (typeof iso !== "string" && typeof iso !== "number") return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    var p = { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
+    if (avecHeure) {
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" })
+          .formatToParts(d).forEach(function (x) { if (p.hasOwnProperty(x.type)) p[x.type] = Number(x.value); });
+      } catch (e) { /* sans fuseaux : UTC */ }
+    }
+    var t = (p.day === 1 ? "1er" : String(p.day)) + " " + MOIS[p.month - 1] + " " + p.year;
+    return avecHeure ? t + " à " + p.hour + " h " + (p.minute < 10 ? "0" : "") + p.minute : t;
+  }
+
+  function enTexte(v, profondeur) {
+    profondeur = profondeur || 0;
+    if (v === null || v === undefined || v === "") return "";
+    if (profondeur > 4) return "…";
+    if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean") return v === true ? "oui" : v === false ? "non" : String(v);
+    if (Array.isArray(v)) return v.map(function (x) { return enTexte(x, profondeur + 1); }).filter(Boolean).join(", ");
+    return Object.keys(v).map(function (k) { return k + INS + ":" + INS + enTexte(v[k], profondeur + 1); }).join(" ; ".replace(" ;", FINE + ";"));
+  }
+
+  function libelleType(nature, type) {
+    if (typeof type !== "string" || !type) return "Type non divulgué";
+    var table = nature === "passeport" ? TYPES_PASSEPORT : TYPES_MOMENT;
+    return Object.prototype.hasOwnProperty.call(table, type) ? table[type] : type;
+  }
+
+  function lignesDetails(d) {
+    var sortie = [];
+    if (d === null || d === undefined || d === "") return sortie;
+    if (typeof d !== "object" || Array.isArray(d)) { sortie.push(["Détails", enTexte(d)]); return sortie; }
+    Object.keys(d).forEach(function (k) {
+      var v = d[k];
+      if (k === "fait" && Array.isArray(v)) {
+        sortie.push(["Travaux", v.map(function (x) { return typeof x === "string" && TRAVAUX[x] ? TRAVAUX[x] : enTexte(x); }).join(", ")]);
+      } else if (k === "pieces" && Array.isArray(v)) {
+        sortie.push(["Pièces", v.map(function (p) {
+          if (p && typeof p === "object" && !Array.isArray(p) && typeof p.nom === "string") {
+            var o = p.origine === "ORIGINE" ? "d’origine" : enTexte(p.origine);
+            return o ? p.nom + " (" + o + ")" : p.nom;
+          }
+          return enTexte(p);
+        }).join(", ")]);
+      } else if (k === "mesures" && v && typeof v === "object" && !Array.isArray(v)) {
+        sortie.push(["Mesures", Object.keys(v).map(function (m) {
+          var x = v[m], val = enTexte(x);
+          if (m === "marche" && typeof x === "number") val = (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x) + " secondes par jour";
+          else if (m === "etancheite" && typeof x === "number") val = x + " bar";
+          return (MESURES[m] || m) + FINE + ":" + INS + val;
+        }).join(", ")]);
+      } else if (k === "atelier") {
+        sortie.push(["Atelier", v && typeof v === "object" && !Array.isArray(v) ? [v.nom, v.ville].filter(function (x) { return typeof x === "string" && x; }).join(", ") || enTexte(v) : enTexte(v)]);
+      } else {
+        sortie.push([k, enTexte(v)]);
+      }
+    });
+    return sortie.filter(function (x) { return x[1] !== ""; });
+  }
+
+  /* ---------- Rendu ---------- */
+
+  var etat = { rapport: null };
+
+  // Ce que veut dire un échec, en clair ; le message technique reste dans le détail replié.
+  var ECHECS = {
+    contenu: "Cette ligne a été modifiée après son scellement.",
+    chemin: "Cette ligne n’appartient pas au scellement indiqué.",
+    horodatage: "Le fichier d’horodatage de ce scellement est altéré.",
+    bitcoin: "Bitcoin ne confirme pas ce scellement."
+  };
+
+  // Une ligne désignée comme on la lit : son type, et sa date si elle est montrée.
+  function nomLigne(r) {
+    var v = r.valeurs || {};
+    var nom = r.divulgue ? libelleType(r.nature, v.type) : "Une ligne";
+    var d = r.divulgue ? (r.nature === "passeport" ? v.creeLe : (v.date || v.creeLe)) : null;
+    return typeof d === "string" && d ? nom + " du " + dateFr(d) : nom;
+  }
+
+  // La date la plus tardive des inscriptions dans Bitcoin : chaque ligne existait au plus tard à cette date.
+  function dateBitcoin(rap) {
+    var t = 0;
+    Object.keys(rap.sceaux).forEach(function (id) { var s = rap.sceaux[id]; if (s.etat === "bitcoin" && s.date > t) t = s.date; });
+    return t ? dateFr(t * 1000) : "";
+  }
+
+  function rendreVerdict(rap) {
+    var v = V.verdict(rap);
+    var carte = document.getElementById("verdict");
+    var titre = document.getElementById("verdict-titre"), texte = document.getElementById("verdict-texte");
+    carte.className = "carte verdict";
+    if (v.etat === "echec" && v.etape === "dossier") {
+      carte.className += " echec"; poserIcone("verdict-icone", "alerte");
+      titre.textContent = "Ce fichier n’est pas un dossier de preuve";
+      texte.textContent = "Dépose le fichier obtenu avec «" + INS + "Télécharger la preuve" + INS + "».";
+    } else if (v.etat === "echec") {
+      carte.className += " echec"; poserIcone("verdict-icone", "alerte");
+      titre.textContent = "Échec de la vérification";
+      var fautive = rap.lignes[v.ligne], phrase = ECHECS[v.etape];
+      if (fautive && fautive.divulgue) phrase = nomLigne(fautive) + FINE + ": " + phrase.charAt(0).toLowerCase() + phrase.slice(1);
+      else phrase = phrase.replace(/^Cette ligne/, "Une ligne");
+      texte.textContent = phrase + " Ne te fie pas à ce dossier.";
+    } else if (v.etat === "verifie") {
+      carte.className += " ok"; poserIcone("verdict-icone", "sceau");
+      titre.textContent = "Tout est vérifié";
+      var n = v.lignes, quand = dateBitcoin(rap);
+      texte.textContent = (n > 1 ? "Ces " + n + " lignes existaient telles quelles" : "Cette ligne existait telle quelle") +
+        " au plus tard le " + quand + ", date inscrite dans Bitcoin." +
+        (v.nonDivulguees === n ? " Leur contenu n’est pas montré ici." : v.nonDivulguees ? " Le contenu de " + v.nonDivulguees + " d’entre elles n’est pas montré ici." : "");
+    } else if (v.etat === "attente") {
+      poserIcone("verdict-icone", "horloge");
+      titre.textContent = "En attente de Bitcoin";
+      texte.textContent = "Rien n’a été modifié, mais " + (v.attente > 1 ? v.attente + " lignes attendent" : "une ligne attend") +
+        " encore leur inscription dans Bitcoin (quelques heures). Retélécharge la preuve plus tard.";
+      if (v.attente === 1) texte.textContent = texte.textContent.replace("leur inscription", "son inscription");
+    } else if (v.etat === "injoignable") {
+      poserIcone("verdict-icone", "info");
+      titre.textContent = "Bitcoin non consulté";
+      texte.textContent = "Rien n’a été modifié dans ce dossier, mais Bitcoin n’a pas pu être consulté. Vérifie ta connexion, puis recharge la page.";
+    } else {
+      poserIcone("verdict-icone", "horloge");
+      titre.textContent = "Vérification en cours…";
+      texte.textContent = "Consultation de Bitcoin…";
+    }
+  }
+
+  function rendreMontre(rap) {
+    var c = document.getElementById("montre");
+    vider(c);
+    var corps;
+    if (etat.embarque) {
+      // La montre est déjà en tête de page : seules les mentions du dossier s'y ajoutent.
+      c.classList.add("cache");
+      corps = document.getElementById("embarque-mentions");
+      vider(corps);
+    } else {
+      c.classList.remove("cache");
+      var r = el("div", "rangee"); var t = el("span", "tuile"); t.appendChild(icone("montre")); r.appendChild(t);
+      corps = el("div", "corps"); r.appendChild(corps);
+      var m = rap.dossier.montre || {};
+      var nom = [m.marque, m.modele].filter(function (x) { return typeof x === "string" && x; }).join(" ");
+      corps.appendChild(el("h2", null, nom || "Montre"));
+      if (typeof m.reference === "string" && m.reference) corps.appendChild(el("div", "meta", "Référence " + m.reference));
+      c.appendChild(r);
+    }
+    var lignes = [];
+    var le = rap.dossier.genereLe ? " le " + dateFr(rap.dossier.genereLe) : "";
+    if (rap.dossier.source === "lien") lignes.push("Dossier issu d’un lien de partage" + le + ".");
+    else if (rap.dossier.source === "proprietaire") lignes.push("Dossier établi par le propriétaire" + le + ".");
+    else if (le) lignes.push("Dossier établi" + le + ".");
+    var na = rap.dossier.enAttente;
+    if (na > 0) lignes.push(na > 1 ? na + " ajouts récents ne sont pas encore couverts par ce dossier." : "Un ajout récent n’est pas encore couvert par ce dossier.");
+    lignes.forEach(function (x) { corps.appendChild(el("p", "gris petit", x)); });
+  }
+
+  function rendreSceaux(rap) {
+    var c = document.getElementById("sceaux");
+    vider(c); c.classList.remove("cache");
+    c.appendChild(el("h2", null, rap.ordreSceaux.length > 1 ? "Les scellements" : "Le scellement"));
+    rap.ordreSceaux.forEach(function (id, n) {
+      var s = rap.sceaux[id];
+      var bloc = el("div"); if (n) bloc.style.marginTop = "18px";
+      var tete = el("div", "ligne-tete");
+      tete.appendChild(el("h3", null, s.scelleLe ? "Scellé le " + dateFr(s.scelleLe, true) : "Scellement " + (n + 1)));
+      var p;
+      if (s.etat === "bitcoin") p = pastille("ok", "Inscrit dans Bitcoin");
+      else if (s.etat === "echec") p = pastille("echec", "Échec");
+      else if (s.etat === "attente") p = pastille("attente", "En attente de Bitcoin");
+      else if (s.etat === "injoignable") p = pastille("neutre", "Bitcoin non consulté");
+      else p = pastille("neutre", "Consultation…");
+      tete.appendChild(p);
+      bloc.appendChild(tete);
+
+      // En clair : une seule phrase sur l'inscription dans Bitcoin.
+      var blocs = s.attestations.filter(function (a) { return a.type === "bitcoin"; });
+      var confirme = blocs.filter(function (a) { return a.etat === "confirmee"; })[0];
+      var resume;
+      if (s.ots.etat !== "ok") resume = ECHECS.horodatage;
+      else if (s.etat === "echec") resume = ECHECS.bitcoin;
+      else if (confirme) {
+        var nb = confirme.sources.filter(function (x) { return x.etat === "accord"; }).length;
+        resume = "Inscrit dans Bitcoin le " + dateFr(confirme.horodatage * 1000, true) + ", confirmé par " + (nb > 1 ? "deux explorateurs indépendants." : "un explorateur (l’autre n’a pas répondu).");
+      } else if (s.etat === "injoignable") resume = "Bitcoin n’a pas pu être consulté.";
+      else if (s.etat === "attente") resume = "Inscription dans Bitcoin en cours (quelques heures).";
+      else resume = "Consultation de Bitcoin…";
+      bloc.appendChild(el("p", "petit gris", resume));
+
+      // Le détail technique, replié : racine, fichier OpenTimestamps, chaque attestation.
+      var tech = el("details", "technique");
+      tech.appendChild(el("summary", null, "Détail technique"));
+      if (s.racine) { tech.appendChild(el("div", null, "Racine de l’arbre" + FINE + ":")); tech.appendChild(el("div", "mono", s.racine)); }
+      if (s.ots.etat !== "ok") tech.appendChild(el("p", null, "Fichier OpenTimestamps" + FINE + ": " + s.ots.message + "."));
+      var liste = el("ul", "etapes"), vus = {};
+      s.attestations.forEach(function (a) {
+        var cle = a.type + ":" + (a.hauteur || a.calendrier || a.etiquette);
+        if (vus[cle]) return; vus[cle] = true;
+        var li = el("li"), mq, txt;
+        if (a.type === "bitcoin") {
+          if (a.etat === "confirmee") {
+            mq = el("span", "marqueur ok", "✓");
+            var noms = a.sources.filter(function (x) { return x.etat === "accord"; }).map(function (x) { return x.nom; });
+            txt = "Bloc " + a.hauteur + ", miné le " + dateFr(a.horodatage * 1000, true) + ". Racine de Merkle confirmée par " + noms.join(" et ") + ".";
+          } else if (a.etat === "echec") {
+            mq = el("span", "marqueur echec", "✕");
+            txt = "Bloc " + a.hauteur + FINE + ": " + (a.message || "attestation contredite") + ".";
+          } else if (a.etat === "injoignable") {
+            mq = el("span", "marqueur attente", "?");
+            txt = "Bloc " + a.hauteur + FINE + ": aucun explorateur n’a répondu. Sur ton propre nœud, la racine de Merkle de ce bloc doit valoir" + FINE + ":";
+          } else {
+            mq = el("span", "marqueur attente", "…");
+            txt = "Bloc " + a.hauteur + FINE + ": consultation…";
+          }
+        } else if (a.type === "attente") {
+          if (blocs.length) return;
+          mq = el("span", "marqueur attente", "…");
+          txt = "En attente auprès du calendrier " + a.calendrier + ".";
+        } else return;
+        li.appendChild(mq);
+        var corps = el("span", null, txt);
+        if (a.type === "bitcoin" && a.racineAttendue && a.etat !== "confirmee") corps.appendChild(el("div", "mono", a.racineAttendue));
+        li.appendChild(corps);
+        liste.appendChild(li);
+      });
+      if (liste.firstChild) tech.appendChild(liste);
+      if (s.etat === "bitcoin" && s.blocAnnonce !== null && !s.attestations.some(function (a) { return a.hauteur === s.blocAnnonce && a.etat === "confirmee"; })) {
+        tech.appendChild(el("p", null, "Le dossier annonce le bloc " + s.blocAnnonce + ", qui ne figure pas parmi les attestations confirmées. Seul le fichier OpenTimestamps fait foi."));
+      }
+      tech.appendChild(el("p", null, "Identifiant du scellement" + FINE + ": " + id));
+      bloc.appendChild(tech);
+      c.appendChild(bloc);
+    });
+  }
+
+  function rendreLigne(r, rap) {
+    var carte = el("article", "carte");
+    var etatL = V.etatLigne(r, rap);
+    var v = r.valeurs || {};
+    var caches = r.caches || {};
+    var rangee = el("div", "rangee");
+    var tuile = el("span", "tuile");
+    tuile.appendChild(icone(r.nature === "passeport" ? "document" : "carnet"));
+    rangee.appendChild(tuile);
+    var corps = el("div", "corps"); rangee.appendChild(corps);
+
+    var tete = el("div", "ligne-tete");
+    var typeTxt = r.divulgue ? libelleType(r.nature, v.type) : "Ligne de l’histoire";
+    tete.appendChild(el("h3", null, typeTxt));
+    if (etatL.etat === "verifie") tete.appendChild(pastille("ok", "Vérifié"));
+    else if (etatL.etat === "echec") tete.appendChild(pastille("echec", "Échec"));
+    else if (etatL.etat === "attente") tete.appendChild(pastille("attente", "En attente"));
+    else if (etatL.etat === "injoignable") tete.appendChild(pastille("neutre", "Bitcoin non consulté"));
+    else tete.appendChild(pastille("neutre", "…"));
+    corps.appendChild(tete);
+
+    var dateLigne = r.nature === "passeport" ? v.creeLe : (v.date || v.creeLe);
+    if (r.divulgue && typeof dateLigne === "string" && dateLigne) corps.appendChild(el("div", "meta", dateFr(dateLigne)));
+    if (r.heritee) corps.appendChild(el("div", "note-heritee", "Héritée d’un propriétaire précédent"));
+
+    if (etatL.etat === "echec") {
+      // Jamais « date prouvée » sur une ligne en échec : on dit seulement ce qui ne va pas.
+      corps.appendChild(el("p", "texte-ligne", ECHECS[etatL.etape]));
+    } else if (!r.divulgue) {
+      var s = rap.sceaux[r.sceau];
+      var quand = s && s.etat === "bitcoin" && s.date ? " Cette ligne existait au plus tard le " + dateFr(s.date * 1000) + "." : "";
+      corps.appendChild(el("p", "texte-ligne gris", "Contenu non montré." + quand));
+    } else if (v.systeme === true) {
+      // Ligne écrite par le site : son type seulement.
+    } else if (r.nature === "passeport") {
+      rendreContenuPasseport(corps, v, caches);
+    } else {
+      if (typeof v.titre === "string" && v.titre) corps.appendChild(el("div", "titre-ligne", v.titre));
+      else if (caches.titre) corps.appendChild(el("div", "gris petit", "Titre non montré"));
+      if (typeof v.texte === "string" && v.texte) corps.appendChild(el("p", "texte-ligne", v.texte));
+      else if (caches.texte) corps.appendChild(el("p", "texte-ligne gris petit", "Texte non montré"));
+      var dets = lignesDetails(v.details);
+      if (dets.length) {
+        var dl = el("dl", "details");
+        dets.forEach(function (d) { dl.appendChild(el("dt", null, d[0])); dl.appendChild(el("dd", null, d[1])); });
+        corps.appendChild(dl);
+      } else if (caches.details) corps.appendChild(el("p", "gris petit", "Détails non montrés"));
+    }
+    if (r.illisibles && r.illisibles.length) corps.appendChild(el("p", "gris petit", "Valeur illisible pour" + FINE + ": " + r.illisibles.join(", ")));
+
+    var tech = el("details", "technique");
+    tech.appendChild(el("summary", null, "Détail technique"));
+    if (etatL.etat === "echec") tech.appendChild(el("p", null, "Étape «" + INS + ETAPES[etatL.etape] + INS + "»" + FINE + ": " + etatL.message + "."));
+    var ul = el("ul", "etapes");
+    function etape(ok, texte) {
+      var li = el("li");
+      li.appendChild(el("span", "marqueur " + (ok === true ? "ok" : ok === false ? "echec" : "attente"), ok === true ? "✓" : ok === false ? "✕" : "…"));
+      li.appendChild(el("span", null, texte)); ul.appendChild(li);
+    }
+    etape(r.contenu.etat === "ok" ? true : r.contenu.etat === "echec" ? false : null,
+      ETAPES.contenu + (r.contenu.etat === "non-divulgue" ? " (contenu non fourni)" : ""));
+    etape(r.chemin.etat === "ok" ? true : r.chemin.etat === "echec" ? false : null, ETAPES.chemin);
+    var sc = rap.sceaux[r.sceau];
+    etape(sc && sc.ots.etat === "ok" ? true : false, ETAPES.horodatage);
+    etape(sc && sc.etat === "bitcoin" ? true : sc && sc.etat === "echec" ? false : null, ETAPES.bitcoin);
+    tech.appendChild(ul);
+    tech.appendChild(el("div", null, "Formule " + (r.formule || "?") + ", empreinte" + FINE + ":"));
+    tech.appendChild(el("div", "mono", r.empreinte || "—"));
+    if (r.divulgue) {
+      var brut = el("dl", "details");
+      Object.keys(v).sort().forEach(function (k) {
+        if (k === "contenu" && v.contenu && typeof v.contenu === "object") {
+          Object.keys(v.contenu).sort().forEach(function (c) { brut.appendChild(el("dt", null, "contenu." + c)); brut.appendChild(el("dd", null, enTexte(v.contenu[c]) || "—")); });
+        } else {
+          brut.appendChild(el("dt", null, k)); brut.appendChild(el("dd", null, enTexte(v[k]) || "—"));
+        }
+      });
+      Object.keys(caches).sort().forEach(function (k) { brut.appendChild(el("dt", null, k)); brut.appendChild(el("dd", "gris", "caché")); });
+      tech.appendChild(brut);
+    }
+    corps.appendChild(tech);
+    carte.appendChild(rangee);
+    return carte;
+  }
+
+  function rendreContenuPasseport(corps, v, caches) {
+    var c = v.contenu && typeof v.contenu === "object" && !Array.isArray(v.contenu) ? v.contenu : {};
+    var resume = [];
+    var nom = [c.marque, c.modele].filter(function (x) { return typeof x === "string" && x; }).join(" ");
+    if (nom) resume.push(nom);
+    if (typeof c.reference === "string" && c.reference) resume.push("référence " + c.reference);
+    if (typeof c.annee === "number") resume.push(String(c.annee));
+    if (typeof c.atelierNom === "string" && c.atelierNom) resume.push(c.atelierNom);
+    if (typeof c.statut === "string" && c.statut) resume.push(c.statut === "CONFIRMEE" ? "confirmée" : c.statut === "REFUSEE" ? "refusée" : c.statut);
+    if (typeof c.type === "string" && c.type) resume.push(SORTES_PAPIER[c.type] || c.type);
+    if (resume.length) corps.appendChild(el("div", "titre-ligne", resume.join(" · ")));
+    if (Object.keys(caches).length) corps.appendChild(el("p", "gris petit", "Certains détails ne sont pas montrés."));
+    if (typeof v.fichier === "string" && v.fichier) corps.appendChild(el("p", "gris petit", (/^PHOTO_/.test(String(v.type)) ? "Le fichier de cette photo est scellé" : "Le fichier de ce papier est scellé") + FINE + ": dépose-le plus haut pour le comparer."));
+  }
+
+  function rendre(rap) {
+    etat.rapport = rap;
+    rendreVerdict(rap);
+    var lignes = document.getElementById("lignes"); vider(lignes);
+    if (rap.erreur) {
+      ["montre", "sceaux", "papiers"].forEach(function (id) { document.getElementById(id).classList.add("cache"); });
+      return;
+    }
+    rendreMontre(rap);
+    rendreSceaux(rap);
+    document.getElementById("papiers").classList.remove("cache");
+    var titre = el("h2", null, "L’histoire, ligne par ligne"); titre.style.margin = "22px 4px 12px";
+    lignes.appendChild(titre);
+    rap.lignes.forEach(function (r) { lignes.appendChild(rendreLigne(r, rap)); });
+  }
+
+  function verifier(dossier) {
+    var rap = V.verifierHorsLigne(dossier);
+    rendre(rap);
+    if (rap.erreur) return;
+    var recuperer = typeof fetch === "function" ? fetch.bind(window) : null;
+    V.consulterBitcoin(rap, recuperer).then(function () { rendre(rap); });
+  }
+
+  // Tout fichier qui n'est pas un dossier lisible reçoit le même verdict simple (« Ce fichier n'est pas un dossier de preuve »).
+  function erreurLecture() {
+    quitterEmbarque();
+    verifier(null);
+  }
+
+  // Un autre dossier déposé dans une page de preuve : l'en-tête de la montre embarquée disparaît, pour ne pas mélanger deux montres.
+  function quitterEmbarque() {
+    if (!etat.embarque) return;
+    etat.embarque = false;
+    document.getElementById("embarque").classList.add("cache");
+  }
+
+  /* ---------- Chargement ---------- */
+
+  function extraireDeHtml(texte) {
+    var doc = new DOMParser().parseFromString(texte, "text/html");   // les scripts n'y sont pas exécutés
+    var s = doc.getElementById("dossier-preuve");
+    if (!s || !s.textContent.trim()) throw new Error("cette page ne contient pas de dossier de preuve");
+    return s.textContent;
+  }
+
+  function lireDossier(fichier) {
+    if (fichier.size > TAILLE_DOSSIER_MAX) { erreurLecture("Ce fichier est trop volumineux pour un dossier de preuve."); return; }
+    var lecteur = new FileReader();
+    lecteur.onload = function () {
+      var texte = String(lecteur.result);
+      try {
+        var brut = /^\s*</.test(texte) ? extraireDeHtml(texte) : texte;
+        var dossier;
+        try { dossier = JSON.parse(brut); } catch (e) { throw new Error("le fichier n’est pas du JSON valide"); }
+        quitterEmbarque();
+        verifier(dossier);
+        document.getElementById("chargement-titre").textContent = "Vérifier un autre dossier";
+        document.getElementById("papier-resultat").textContent = "";
+      } catch (e) {
+        erreurLecture("Lecture impossible" + FINE + ": " + (e && e.message ? e.message : "fichier illisible") + ".");
+      }
+    };
+    lecteur.onerror = function () { erreurLecture("Lecture du fichier impossible."); };
+    lecteur.readAsText(fichier);
+  }
+
+  function lirePapier(fichier) {
+    var sortie = document.getElementById("papier-resultat"); vider(sortie);
+    if (!etat.rapport || etat.rapport.erreur) return;
+    if (fichier.size > TAILLE_PAPIER_MAX) { sortie.appendChild(el("p", "petit", "Fichier trop volumineux.")); return; }
+    sortie.appendChild(el("p", "gris petit", "Calcul de l’empreinte…"));
+    var lecteur = new FileReader();
+    lecteur.onload = function () {
+      var res = V.chercherFichier(etat.rapport, new Uint8Array(lecteur.result));
+      vider(sortie);
+      var p = el("p", null);
+      p.style.marginTop = "12px";
+      if (res.lignes.length) {
+        p.appendChild(pastille("ok", "Correspond"));
+        var noms = res.lignes.map(function (i) { return "«" + INS + nomLigne(etat.rapport.lignes[i]) + INS + "»"; });
+        p.appendChild(el("span", null, " «" + INS + fichier.name + INS + "» est bien le fichier scellé de" + FINE + ": " + noms.join(", ") + "."));
+      } else {
+        p.appendChild(pastille("echec", "Ne correspond pas"));
+        p.appendChild(el("span", null, " «" + INS + fichier.name + INS + "» ne correspond à aucun fichier scellé de ce dossier." +
+          (res.fichiersCaches ? (res.fichiersCaches > 1 ? " " + res.fichiersCaches + " fichiers de ce dossier ne sont pas montrés." : " Un fichier de ce dossier n’est pas montré.") : "")));
+      }
+      sortie.appendChild(p);
+    };
+    lecteur.readAsArrayBuffer(fichier);
+  }
+
+  // Mode embarqué : la montre en tête, et le rappel qu'un vérificateur obtenu par soi-même est plus indépendant.
+  function rendreEmbarque(dossier) {
+    var c = document.getElementById("embarque");
+    vider(c);
+    var m = dossier && typeof dossier === "object" && dossier.montre && typeof dossier.montre === "object" ? dossier.montre : {};
+    var r = el("div", "rangee"); var t = el("span", "tuile"); t.appendChild(icone("montre")); r.appendChild(t);
+    var corps = el("div", "corps"); r.appendChild(corps);
+    var nom = [m.marque, m.modele].filter(function (x) { return typeof x === "string" && x; }).join(" ");
+    corps.appendChild(el("h1", null, nom || "Montre"));
+    if (typeof m.reference === "string" && m.reference) corps.appendChild(el("div", "meta", "Référence " + m.reference));
+    var mentions = el("div"); mentions.id = "embarque-mentions"; mentions.style.marginTop = "8px";
+    corps.appendChild(mentions);
+    corps.appendChild(el("p", "gris petit", "Ce fichier contient la preuve de cette montre et la vérifie lui-même, sans le site."));
+    if (typeof ADRESSE_CODE_PUBLIC === "string" && /^https:\/\/[^\s"<>]+$/.test(ADRESSE_CODE_PUBLIC)) {
+      var a = el("a", null, "Le code public du vérificateur");
+      a.href = ADRESSE_CODE_PUBLIC; a.rel = "noopener noreferrer"; a.target = "_blank";
+      a.style.color = "var(--violet)"; a.style.fontWeight = "600"; a.style.fontSize = "14px";
+      corps.appendChild(a);
+    }
+    c.appendChild(r);
+    c.classList.remove("cache");
+  }
+
+  function brancherDepot(zoneId, champId, action) {
+    var zone = document.getElementById(zoneId), champ = document.getElementById(champId);
+    champ.addEventListener("change", function () { if (champ.files && champ.files[0]) action(champ.files[0]); champ.value = ""; });
+    zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("survol"); });
+    zone.addEventListener("dragleave", function () { zone.classList.remove("survol"); });
+    zone.addEventListener("drop", function (e) {
+      e.preventDefault(); zone.classList.remove("survol");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) action(e.dataTransfer.files[0]);
+    });
+  }
+
+  function demarrer() {
+    poserIcone("logo", "sceau");
+    poserIcone("verdict-icone", "sceau");
+    poserIcone("papiers-icone", "document");
+    brancherDepot("depot-dossier", "choix-dossier", lireDossier);
+    brancherDepot("depot-papier", "choix-papier", lirePapier);
+    // Empêche le navigateur d'ouvrir un fichier lâché à côté d'une zone.
+    window.addEventListener("dragover", function (e) { e.preventDefault(); });
+    window.addEventListener("drop", function (e) { e.preventDefault(); });
+    var integre = document.getElementById("dossier-preuve").textContent;
+    if (integre && integre.trim()) {
+      try {
+        var dossierIntegre = JSON.parse(integre);
+        etat.embarque = true;
+        rendreEmbarque(dossierIntegre);
+        // Le dépôt d'un autre dossier passe après l'histoire.
+        var chargement = document.getElementById("chargement");
+        document.getElementById("lignes").after(chargement);
+        verifier(dossierIntegre);
+        document.getElementById("chargement-titre").textContent = "Vérifier un autre dossier";
+      } catch (e) { erreurLecture(); }
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", demarrer);
+  else demarrer();
+})();
+</script>
+</body>
+</html>
